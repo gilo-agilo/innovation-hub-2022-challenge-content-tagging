@@ -23,6 +23,8 @@ ES_PASSWORD = "oCj76TXQ0tUUrVxznwoJ"
 # ES_DB_PATH = "es_db/cifar-10_20.json"
 ES_DB_PATH = "es_db/ford.json"
 
+ProductionMode = os.getenv('elastciDn') != None
+
 # FIXME
 # dir_train = "static/cifar10/train"
 # dir_test = "static/cifar10/test"
@@ -61,45 +63,40 @@ def load_page():
 
 @app.route('/', methods=['POST'])
 def search():
-    file = request.files['image-file'].filename  # image query an image string path
-    app.logger.info(f"Searching Elasticsearch index {index_name} for {file}")
+    image = Image.open(request.files['image-file'].stream)
 
-    # FIXME: dir_test is static
-    path = dir_test + '/' + file
-    with Image.open(path) as image:
-        # create dataset and dataloader objects for Pytorch
-        dataset = ImageDataset([image], transform)
-        dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
+    # create dataset and dataloader objects for Pytorch
+    dataset = ImageDataset([image], transform)
+    dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
 
-        # pass image trough deep-learning model to gain the image embedding vector
-        # and predict the class
-        pred = predict(dataloader, model, device)
+    # pass image trough deep-learning model to gain the image embedding vector
+    # and predict the class
+    pred = predict(dataloader, model, device)
 
-        # extract the image embeddings vector
-        embedding = hook_features
-        # reduce the dimensionality of the embedding vector
-        embedding = pca.transform(embedding)
+    # extract the image embeddings vector
+    embedding = hook_features
+    # reduce the dimensionality of the embedding vector
+    embedding = pca.transform(embedding)
 
-        # get image class label as one-hot vector
-        label_vec = np.zeros(len(LABEL_MAPPING), dtype='int64')
-        label_vec[pred] = 1
+    # get image clas s label as one-hot vector
+    label_vec = np.zeros(len(LABEL_MAPPING), dtype='int64')
+    label_vec[pred] = 1
 
-        # concatenate embeddings and label vector
-        features_vec = np.concatenate((embedding, label_vec), axis=None)
+    # concatenate embeddings and label vector
+    features_vec = np.concatenate((embedding, label_vec), axis=None)
 
-        filename = os.path.split(file)[1]
-        query = {
-            'id': filename[0: filename.find('-')],
-            'filename': filename,
-            'path': path,
-            'features': features_vec
-        }
+    filename = request.files['image-file'].filename
+    query = {
+        'id': filename[0: filename.find('-')],
+        'filename': filename,
+        'path': os.path.join(dir_test, filename),
+        'features': features_vec
+    }
 
-    results = searcher.search_index(es=es, name=index_name, queries=[query], k=5)
+    results = searcher.search_index(es=es, name=index_name, queries=[query], k=10)
     results = results[0]['images']
 
-    return render_template('index.html', results=results, image_path=path)
-
+    return render_template('index.html', results=results)
 
 def create_queries(directory, model, pca, transform, num_labels):
     """ Read CIFAR-10 test data and create Elasticsearch queries.
@@ -236,10 +233,18 @@ if __name__ == '__main__':
 
     app.logger.info(f"Running Elasticsearch on {hosts} ...")
     # run Elasticsearch
-    es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
-                       http_auth=('elastic', ES_PASSWORD))
-    # es = Elasticsearch(hosts=[{'host': 'localhost', 'port': 9200}], timeout=60, retry_on_timeout=True)
-
+    #es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
+    #                   http_auth=('elastic', ES_PASSWORD))
+    #es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
+    #                   http_auth=('elastic', ES_PASSWORD))
+    
+    if ProductionMode:
+        #es = Elasticsearch(hosts='http://' + os.environ['elastciDn'] + ':9200')
+        es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
+                      http_auth=('elastic', ES_PASSWORD))
+    else: 
+        es = Elasticsearch(hosts='http://localhost:30002')
+        
     app.logger.info(f"Creating Elasticsearch index {index_name} ...")
     # creating Elasticsearch index
     indexer = Indexer()
@@ -264,8 +269,11 @@ if __name__ == '__main__':
 
     # logger.info(f"Writing search results at {path_results} ...")
     # write_results(results, path_results)
-
-    app.logger.info("Running application ...")
-    app.run()
+    if ProductionMode:
+        app.logger.info("Running application Production mode...")
+        app.run(debug=True)
+    else:
+        app.logger.info("Running application local mode...")
+        app.run(debug=True)
 
 
