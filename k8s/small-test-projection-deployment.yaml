@@ -1,0 +1,43 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smalltestproject-deployment
+  labels:
+    app: smalltestproject
+spec:
+  replicas: 1
+  selector: 
+    matchLabels:
+      app: smalltestproject
+  template:
+    metadata:
+      labels:
+        app: smalltestproject
+    spec:
+      containers:
+      - name: smalltestproject
+        image: docker.io/yuriygavriluk/smalltestproject:1
+        ports:
+        - containerPort: 5000
+        env: 
+        - name: elastciDn
+          valueFrom:
+            configMapKeyRef: 
+              name: application-configmap
+              key: database_url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smalltestproject-service
+spec:
+  selector:
+    app: smalltestproject
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+      nodePort: 30003
+---

@@ -1,0 +1,51 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: application-configmap
+data:
+  database_url: elasticsearch-service
+---
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datascienceimage-deployment
+  labels:
+    app: datascienceimage
+spec:
+  replicas: 1
+  selector: 
+    matchLabels:
+      app: datascienceimage
+  template:
+    metadata:
+      labels:
+        app: datascienceimage
+    spec:
+      containers:
+      - name: datascienceimage
+        image: docker.io/yuriygavriluk/data-sceince-image-search-cars:2
+        ports:
+        - containerPort: 5000
+        env: 
+        - name: elastciDn
+          valueFrom:
+            configMapKeyRef: 
+              name: application-configmap
+              key: database_url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datascienceimage-service
+spec:
+  selector:
+    app: datascienceimage
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+      nodePort: 30001
+---
