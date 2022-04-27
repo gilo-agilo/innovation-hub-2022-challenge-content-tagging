@@ -241,9 +241,9 @@ if __name__ == '__main__':
     if ProductionMode:
         es = Elasticsearch(hosts='http://' + os.environ['elastciDn'] + ':9200')
     else: 
-        es = Elasticsearch(hosts='http://localhost:30002')
-        #es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
-        #              http_auth=('elastic', ES_PASSWORD))
+        #es = Elasticsearch(hosts='http://localhost:30002')
+        es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
+                      http_auth=('elastic', ES_PASSWORD))
         
     app.logger.info(f"Creating Elasticsearch index {index_name} ...")
     # creating Elasticsearch index
