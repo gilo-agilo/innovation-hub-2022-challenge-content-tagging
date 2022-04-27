@@ -271,7 +271,8 @@ if __name__ == '__main__':
     # write_results(results, path_results)
     if ProductionMode:
         app.logger.info("Running application Production mode...")
-        app.run(debug=True)
+        port = int(os.environ.get("PORT", 5000))
+        app.run(debug=True,host='0.0.0.0',port=port)
     else:
         app.logger.info("Running application local mode...")
         app.run(debug=True)

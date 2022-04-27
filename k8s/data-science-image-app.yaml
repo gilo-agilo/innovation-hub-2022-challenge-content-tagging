@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
       - name: datascienceimage
-        image: docker.io/yuriygavriluk/data-sceince-image-search-cars:2
+        image: docker.io/yuriygavriluk/data-sceince-image-search-cars:4
         ports:
         - containerPort: 5000
         env: 
