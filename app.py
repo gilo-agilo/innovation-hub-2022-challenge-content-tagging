@@ -25,8 +25,8 @@ from index.searcher import Searcher
 ES_PASSWORD = "+b77YVyI_QDtEAMO=bRl"
 ES_DB_PATH = "es_db/train.json"
 
-# ProductionMode = os.getenv('elastciDn') != None
-ProductionMode = False
+ProductionMode = os.getenv('elastciDn') != None
+# ProductionMode = False
 
 # FIXME
 # dir_train = "static/cifar10/train"
