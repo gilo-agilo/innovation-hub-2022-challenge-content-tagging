@@ -5,7 +5,7 @@ from tqdm import tqdm
 from PIL import Image
 import numpy as np
 from elasticsearch import Elasticsearch
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 
 import joblib
 import torch
@@ -60,6 +60,35 @@ def load_page():
     """ Render index.html webpage. """
     return render_template('index.html')
 
+
+
+@app.route('/ImageVector', methods=['POST'])
+def imageVector():
+    image = Image.open(request.files['image-file'].stream)
+
+    # create dataset and dataloader objects for Pytorch
+    dataset = ImageDataset([image], transform)
+    dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
+
+    # pass image trough deep-learning model to gain the image embedding vector
+    # and predict the class
+    pred = predict(dataloader, model, device)
+
+    # extract the image embeddings vector
+    embedding = hook_features
+    # reduce the dimensionality of the embedding vector
+    embedding = pca.transform(embedding)
+
+    # get image clas s label as one-hot vector
+    label_vec = np.zeros(len(LABEL_MAPPING), dtype='int64')
+    label_vec[pred] = 1
+
+    # concatenate embeddings and label vector
+    features_vec = np.concatenate((embedding, label_vec), axis=None)
+    
+    return json.dumps({
+        "vector" : features_vec.tolist()
+    })
 
 @app.route('/', methods=['POST'])
 def search():
@@ -241,9 +270,9 @@ if __name__ == '__main__':
     if ProductionMode:
         es = Elasticsearch(hosts='http://' + os.environ['elastciDn'] + ':9200')
     else: 
-        es = Elasticsearch(hosts='http://localhost:30002')
-        #es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
-        #              http_auth=('elastic', ES_PASSWORD))
+        #es = Elasticsearch(hosts='http://localhost:30002')
+        es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
+                      http_auth=('elastic', ES_PASSWORD))
         
     app.logger.info(f"Creating Elasticsearch index {index_name} ...")
     # creating Elasticsearch index
