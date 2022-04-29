@@ -91,6 +91,7 @@ def label_to_vector(label, mapping):
     try:
         vec[mapping[label]] = 1
     except:
-        print(label)
+        pass
+        # print(label)
 
     return vec

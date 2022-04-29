@@ -11,7 +11,7 @@
     <title>CBIR with Deep Learning</title>
     <style>
     .search {
-       
+       background: url({{ background_img_path }}) no-repeat center/cover;
     }
     </style>
 </head>
@@ -32,6 +32,15 @@
                 <input class="upload-btn" id="upload-btn" type="file" accept="image/png, image/jpeg" name="image-file" value="upload">
                 <label for="upload-btn">SELECT</label>
                 <button class="search-btn" id="search-btn" type="submit" name="search" value="search" >UPLOAD</button>
+<!--                <img src="{{ input_img['image'] }}" style="width: 500px;">-->
+<!--                <div class="result">-->
+<!--                    <div class="title">-->
+<!--                        <p><b>Filename: </b>{{ input_img["filename"] }}</p>-->
+<!--                        <p><b>Model: </b>{{ input_img["model"] }}</p>-->
+<!--                        <p><b>Color: </b>{{ input_img["color"] }}</p>-->
+<!--                        <p><b>Background: </b>{{ input_img["background"] }}</p>-->
+<!--                    </div>-->
+<!--                </div>-->
             </form>
         </section>
 

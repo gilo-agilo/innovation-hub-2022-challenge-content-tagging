@@ -84,7 +84,11 @@ def create_docs(directory, model, pca, transform, mapping):
             dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
 
             # pass image trough deep-learning model to gain the image embedding vector
-            predict(dataloader, model, device)
+            try:
+                predict(dataloader, model, device)
+            except Exception as error:
+                print(error)
+                pass
             # extract the image embeddings vector
             embedding = hook_features
             # reduce the dimensionality of the embedding vector
@@ -100,7 +104,7 @@ def create_docs(directory, model, pca, transform, mapping):
             num_features = features_vec.shape[0]  # total number of image features
 
             doc = {
-                'id': file[0: file.find('-')],
+                'id': file,
                 'filename': file,
                 'path': path,
                 'features': features_vec.tolist()
@@ -111,12 +115,10 @@ def create_docs(directory, model, pca, transform, mapping):
 
 
 if __name__ == "__main__":
-    # path for CIFAR-10 train and test datasets
-    # dir_train = r'C:\Users\ann\Code\challenges\cbir-deep-learning\static\cifar10\train'
     dir_train = r'../static/ford/train'
-    # dir_test = '../static/cifar10/test'
+    # dir_test = '../static/ford/test'
 
-    save_path = "../es_db/ford.json"
+    save_path = "../es_db/train.json"
 
     # get available device (CPU/GPU)
     device = torch.device(f"cuda" if torch.cuda.is_available() else "cpu")
@@ -147,7 +149,7 @@ if __name__ == "__main__":
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    app.logger.info("Loading CIFAR-10 train data and creating Elasticsearch documents ...")
+    app.logger.info("Loading Ford train data and creating Elasticsearch documents ...")
     images, num_features = create_docs(dir_train, model, pca, transform, LABEL_MAPPING)
     if (images is None) or (num_features == 0):
         app.logger.error("Number of Elasticsearch documents is 0 ...")

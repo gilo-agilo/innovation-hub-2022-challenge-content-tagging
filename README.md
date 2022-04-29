@@ -20,6 +20,7 @@ Overall accuracy per each requirement
 
 Accuracy per requirement and value
 ![plot](assets/accuracy/model.PNG)
+![plot](assets/accuracy/type.PNG)
 ![plot](assets/accuracy/Color.PNG)
 ![plot](assets/accuracy/Background.PNG)
 ![plot](assets/accuracy/Inside.PNG)

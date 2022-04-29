@@ -1,7 +1,8 @@
 import os
 import logging
 import json
-from tqdm import tqdm
+import base64
+from io import BytesIO
 from PIL import Image
 import numpy as np
 from elasticsearch import Elasticsearch
@@ -19,11 +20,12 @@ from models import pretrained_models
 from index.indexer import Indexer
 from index.searcher import Searcher
 
-ES_PASSWORD = "oCj76TXQ0tUUrVxznwoJ"
+ES_PASSWORD = "+b77YVyI_QDtEAMO=bRl"
 # ES_DB_PATH = "es_db/cifar-10_20.json"
-ES_DB_PATH = "es_db/ford.json"
+ES_DB_PATH = "es_db/train.json"
 
-ProductionMode = os.getenv('elastciDn') != None
+# ProductionMode = os.getenv('elastciDn') != None
+ProductionMode = False
 
 # FIXME
 # dir_train = "static/cifar10/train"
@@ -116,7 +118,7 @@ def search():
 
     filename = request.files['image-file'].filename
     query = {
-        'id': filename[0: filename.find('-')],
+        'id': filename,
         'filename': filename,
         'path': os.path.join(dir_test, filename),
         'features': features_vec
@@ -125,104 +127,21 @@ def search():
     results = searcher.search_index(es=es, name=index_name, queries=[query], k=10)
     results = results[0]['images']
 
-    return render_template('index.html', results=results)
+    # prepare image for html
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    img_bytes = base64.b64encode(buffered.getvalue())
+    img_str = img_bytes.decode()
 
-def create_queries(directory, model, pca, transform, num_labels):
-    """ Read CIFAR-10 test data and create Elasticsearch queries.
+    # prepare list with all input image info
+    input_img = dict()
+    input_img["image"] = "data:image/png;base64, " + img_str
+    input_img["filename"] = ""
+    input_img["model"] = ""
+    input_img["color"] = ""
+    input_img["background"] = ""
 
-    The image queries structure is the following: ("id", "filename", "path", "features").
-    The "features" field refers to the image feature vector which consists of:
-        * the image embeddings found by the deep-learning model and then reduced using PCA,
-        * the one-hot class label vector, where the class is predicted by the deep-learning model.
-
-    Args:
-        directory:
-            CIFAR-10 test data directory, as string.
-        model:
-            deep-learning model, as Pytorch object.
-        pca:
-           Principal Component Analysis (PCA), as scikit-learn model.
-        transform:
-            image transformations, as Pytorch object.
-        num_labels:
-            number of class labels in CIFAR-10, as integer.
-
-    Returns:
-        image queries, as list of dictionaries.
-    """
-    if not os.path.isdir(directory):
-        app.logger.error(f"Provided path doesn't exist or isn't a directory ...")
-        return None
-    elif model is None:
-        app.logger.error(f"Provided deep-learning model is None ...")
-        return None
-    elif pca is None:
-        app.logger.error(f"Provided PCA model is None ...")
-        return None
-
-    queries = []
-    for file in tqdm(os.listdir(directory)):
-        path = os.path.join(directory, file)
-
-        with Image.open(path) as image:
-            # create dataset and dataloader objects for Pytorch
-            dataset = ImageDataset([image], transform)
-            dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
-
-            # pass image trough deep-learning model to gain the image embedding vector
-            # and predict the class
-            pred = predict(dataloader, model, device)
-
-            # extract the image embeddings vector
-            embedding = hook_features
-            # reduce the dimensionality of the embedding vector
-            embedding = pca.transform(embedding)
-
-            # get image class label as one-hot vector
-            label_vec = np.zeros(num_labels, dtype='int64')
-            label_vec[pred] = 1
-
-            # concatenate embeddings and label vector
-            features_vec = np.concatenate((embedding, label_vec), axis=None)
-
-            query = {
-                'id': file[0: file.find('-')],
-                'filename': file,
-                'path': path,
-                'features': features_vec
-            }
-            queries.append(query)
-
-    return queries
-
-
-def write_results(results, path):
-    """ Create search results file (.txt) according to trec_eval specifications.
-
-    The results file has records of the form: (query_id, iteration, doc_id, rank, similarity, run_id).
-
-    Args:
-        results:
-            search results of the form (query_id, images: [id, filename, path, score]), as list of dictionaries.
-        path:
-             file path, as string.
-    """
-    if (results is None) or (not results):
-        app.logger.error("Number of search results is 0 ...")
-        return
-    elif os.path.isdir(path):
-        app.logger.error("Provided path is a directory and not a file ...")
-        return
-
-    with open(path, 'w') as f:
-        iteration = "0"
-        rank = "0"
-        run_id = "STANDARD"
-        for result in tqdm(results):
-            # results file contains records of the form: (query_id, iteration, doc_id, rank, similarity, run_id)
-            for image in result["images"]:
-                record = f"{result['query_id']} {iteration} {image['id']} {rank} {image['score']} {run_id}\n"
-                f.write(record)
+    return render_template('index.html', results=results, input_img=input_img)
 
 
 if __name__ == '__main__':
@@ -230,8 +149,8 @@ if __name__ == '__main__':
     device = torch.device(f"cuda" if torch.cuda.is_available() else "cpu")
     app.logger.info(f'Using {device} device ...')
 
-    app.logger.info(f'Loading VGG-16 model from {PATH_VGG_16} ...')
     # initialize VGG-16
+    app.logger.info(f'Loading VGG-16 model from {PATH_VGG_16} ...')
     model = pretrained_models.initialize_model(pretrained=True,
                                                num_labels=len(LABEL_MAPPING),
                                                feature_extracting=True)
@@ -243,8 +162,8 @@ if __name__ == '__main__':
     # register hook
     model.classifier[5].register_forward_hook(get_features())
 
-    app.logger.info(f'Loading PCA model from {PATH_PCA} ...')
     # load PCA pretrained model
+    app.logger.info(f'Loading PCA model from {PATH_PCA} ...')
     pca = joblib.load(PATH_PCA)
 
     # image transformations
@@ -262,11 +181,9 @@ if __name__ == '__main__':
 
     app.logger.info(f"Running Elasticsearch on {hosts} ...")
     # run Elasticsearch
-    #es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
-    #                   http_auth=('elastic', ES_PASSWORD))
-    #es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
-    #                   http_auth=('elastic', ES_PASSWORD))
-    
+    es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
+                       http_auth=('elastic', ES_PASSWORD))
+
     if ProductionMode:
         es = Elasticsearch(hosts='http://' + os.environ['elastciDn'] + ':9200')
     else: 
@@ -283,25 +200,16 @@ if __name__ == '__main__':
                          number_of_replicas=number_of_replicas,
                          num_features=num_features)
 
-    app.logger.info(f"Indexing CIFAR-10 images ...")
-    # indexing CIFAR-10 image documents
+    app.logger.info(f"Indexing images ...")
+    # indexing image documents
     indexer.index_images(es=es, name=index_name, images=images)
-
-    # logger.info(f"Searching Elasticsearch index {index_name} ...")
-    # searcher = Searcher()
-    # results = searcher.search_index(es=es, name=index_name, queries=queries, k=100)
-    # if (results is None) or (not results):
-    #     logger.error("Number of search results is 0 ...")
-    #     sys.exit(1)
 
     searcher = Searcher()
 
-    # logger.info(f"Writing search results at {path_results} ...")
-    # write_results(results, path_results)
     if ProductionMode:
         app.logger.info("Running application Production mode...")
         port = int(os.environ.get("PORT", 5000))
-        app.run(debug=True,host='0.0.0.0',port=port)
+        app.run(debug=True, host='0.0.0.0', port=port)
     else:
         app.logger.info("Running application local mode...")
         app.run(debug=True)
