@@ -7,6 +7,8 @@ from PIL import Image
 import numpy as np
 from elasticsearch import Elasticsearch
 from flask import Flask, render_template, request, jsonify
+from opensearchpy import OpenSearch
+from tqdm import tqdm
 
 import joblib
 import torch
@@ -67,6 +69,13 @@ def load_page():
 def imageVector():
     image = Image.open(request.files['image-file'].stream)
 
+    features_vec = imageVectorInternal(image)
+
+    return json.dumps({
+        "vector" : features_vec.tolist()
+    })
+
+def imageVectorInternal(image):
     # create dataset and dataloader objects for Pytorch
     dataset = ImageDataset([image], transform)
     dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
@@ -87,33 +96,25 @@ def imageVector():
     # concatenate embeddings and label vector
     features_vec = np.concatenate((embedding, label_vec), axis=None)
     
-    return json.dumps({
-        "vector" : features_vec.tolist()
-    })
+    return features_vec
+
+def renderTemplate(image, results, pageName):
+    # prepare image for html
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    img_bytes = base64.b64encode(buffered.getvalue())
+    img_str = img_bytes.decode()
+
+    # prepare list with all input image info
+    input_img = "data:image/png;base64, " + img_str
+
+    return render_template(pageName, results=results,
+                           input_img=input_img, input_img_filename=request.files['image-file'].filename)
 
 @app.route('/', methods=['POST'])
 def search():
     image = Image.open(request.files['image-file'].stream)
-
-    # create dataset and dataloader objects for Pytorch
-    dataset = ImageDataset([image], transform)
-    dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
-
-    # pass image trough deep-learning model to gain the image embedding vector
-    # and predict the class
-    pred = predict(dataloader, model, device)
-
-    # extract the image embeddings vector
-    embedding = hook_features
-    # reduce the dimensionality of the embedding vector
-    embedding = pca.transform(embedding)
-
-    # get image clas s label as one-hot vector
-    label_vec = np.zeros(len(LABEL_MAPPING), dtype='int64')
-    label_vec[pred] = 1
-
-    # concatenate embeddings and label vector
-    features_vec = np.concatenate((embedding, label_vec), axis=None)
+    features_vec = imageVectorInternal(image);
 
     filename = request.files['image-file'].filename
     query = {
@@ -126,18 +127,90 @@ def search():
     results = searcher.search_index(es=es, name=index_name, queries=[query], k=10)
     results = results[0]['images']
 
-    # prepare image for html
-    buffered = BytesIO()
-    image.save(buffered, format="JPEG")
-    img_bytes = base64.b64encode(buffered.getvalue())
-    img_str = img_bytes.decode()
+    
+    return renderTemplate(image, results, 'index.html')
 
-    # prepare list with all input image info
-    input_img = "data:image/png;base64, " + img_str
+@app.route('/sarchOpenSearch', methods=['POST'])
+def searchOpenSearch():
+    image = Image.open(request.files['image-file'].stream)
+    features_vec = imageVectorInternal(image);
 
-    return render_template('index.html', results=results,
-                           input_img=input_img, input_img_filename=request.files['image-file'].filename)
+    filename = request.files['image-file'].filename
+    query_body = {
+        "query": {
+            "knn" : {
+                "features" :{
+                    "vector" : features_vec,
+                    "k": 10
+                }
+            } 
+        }
+    }
+    
+    openSearchResults = []
+    openSearchReponse = client.search(index=[index_name], body=query_body, size=10)
+    openSearchrecord = {
+                'query_id': filename[0: filename.find('-')],
+                'images': []
+            }
+    for hit in openSearchReponse['hits']['hits']:
+        res = {
+                'id': hit["_source"]["id"],
+                'filename': hit["_source"]["filename"],
+                'path': hit["_source"]["path"],
+                'score': hit["_score"]
+            }
+        openSearchrecord["images"].append(res)
+        openSearchResults.append(openSearchrecord)
+    results = openSearchResults[0]['images']
+    
+    return renderTemplate(image, results, 'index-opensearch.html')
 
+@app.route('/sarchOpenSearch')
+def load_page_OpenSearch():
+    """ Render index.html webpage. """
+    return render_template('index-opensearch.html')
+
+@app.route('/reinitOpenSearch')
+def reinitOpenSearch():
+    index_body = {
+        'settings': {
+            'index': {
+                'number_of_shards': number_of_shards,
+                'knn': True
+            }
+        },
+        'mappings': {
+                'properties': {
+                    'id': {
+                        'type': 'text',
+                        'index': False
+                    },
+                    'filename': {
+                        'type': 'text',
+                        'index': False
+                    },
+                    'path': {
+                        'type': 'text',
+                        'index': False
+                    },
+                    'features': {
+                        'type': 'knn_vector',
+                        'dimension': num_features,
+                    }
+                }
+            }
+    }
+    
+    if client.indices.exists(index=[index_name]):
+        print(f'Elasticsearch index "{index_name}" already exists. Deleting ...')
+        client.indices.delete(index=[index_name])
+        
+    client.indices.create(index_name, body=index_body)
+
+    for image in tqdm(images, desc="indexing images in ES"):
+        client.index(index=index_name, body=image)
+    return "ok"
 
 if __name__ == '__main__':
     # get available device (CPU/GPU)
@@ -200,6 +273,10 @@ if __name__ == '__main__':
     indexer.index_images(es=es, name=index_name, images=images)
 
     searcher = Searcher()
+    
+    host = 'https://search-testdomain-6ymb6zjdmjqxog7kln72dpya7m.eu-west-1.es.amazonaws.com'
+    auth = ('testdomainUser', 'Qwerty1234!') # For testing only. Don't store credentials in code.
+    client = OpenSearch(hosts = host, http_auth = auth)    
 
     if ProductionMode:
         app.logger.info("Running application Production mode...")

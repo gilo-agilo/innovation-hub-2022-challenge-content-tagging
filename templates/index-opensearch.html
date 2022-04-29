@@ -27,16 +27,18 @@
             </div>
         </nav>
 
+        
+
         <section class="search">
-            <form method="post" id="form" enctype="multipart/form-data">
-                <h1>Elastic search</h1>
+            <form method="post" id="form" enctype="multipart/form-data" action="sarchOpenSearch">
+                <h1>Open search AWS</h1>
                 <input class="upload-btn" id="upload-btn" type="file" accept="image/png, image/jpeg" name="image-file" value="upload">
                 <label for="upload-btn">SELECT</label>
                 <button class="search-btn" id="search-btn" type="submit" name="search" value="search" >UPLOAD</button>
                 <div class="result">
                     <div class="title">
                         <p><b>Input Filename: </b>{{ input_img_filename }}</p>
-                    </div>
+                    </div>m
                     <div class="image">
                         <img src="{{ input_img }}" style="width: 500px;">
                     </div>
