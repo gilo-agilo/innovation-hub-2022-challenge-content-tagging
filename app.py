@@ -21,7 +21,6 @@ from index.indexer import Indexer
 from index.searcher import Searcher
 
 ES_PASSWORD = "+b77YVyI_QDtEAMO=bRl"
-# ES_DB_PATH = "es_db/cifar-10_20.json"
 ES_DB_PATH = "es_db/train.json"
 
 # ProductionMode = os.getenv('elastciDn') != None
@@ -134,14 +133,10 @@ def search():
     img_str = img_bytes.decode()
 
     # prepare list with all input image info
-    input_img = dict()
-    input_img["image"] = "data:image/png;base64, " + img_str
-    input_img["filename"] = ""
-    input_img["model"] = ""
-    input_img["color"] = ""
-    input_img["background"] = ""
+    input_img = "data:image/png;base64, " + img_str
 
-    return render_template('index.html', results=results, input_img=input_img)
+    return render_template('index.html', results=results,
+                           input_img=input_img, input_img_filename=request.files['image-file'].filename)
 
 
 if __name__ == '__main__':
