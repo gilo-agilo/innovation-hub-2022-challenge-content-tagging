@@ -86,4 +86,22 @@ Based on it we'll be able to get the **Benchmark accuracy score** and improve th
 the model based on the collected images.
 
 This task can be not only the solution for Ford cars, but also for any other cars and requirements.
-All in all, we are creating not o
+All in all, we are creating the general pipeline for this task.
+
+## Benchmark accuracy 
+#### (on local Elastic Search)
+Overall accuracy per each requirement
+![plot](assets/accuracy/accuracy1.PNG)
+
+Accuracy per requirement and value
+![plot](assets/accuracy/model.PNG)
+![plot](assets/accuracy/type.PNG)
+
+Original model             |  Color detection model
+:-------------------------:|:-------------------------:
+![](assets/accuracy/Color.PNG)  |  ![](assets/accuracy/Color_model.PNG)
+
+![plot](assets/accuracy/Background.PNG)
+![plot](assets/accuracy/Inside.PNG)
+![plot](assets/accuracy/Audience1.PNG)
+![plot](assets/accuracy/Audience2.PNG)

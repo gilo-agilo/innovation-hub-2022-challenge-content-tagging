@@ -52,7 +52,7 @@ if __name__ == "__main__":
     # collect all features as list of jsons
     data = []
     for ind, filename in tqdm(enumerate(image_filenames), desc="creating ES DB"):
-        filepath = os.path.join(image_path, filename)
+        filepath = image_path + "/" + filename
         features_vec = features[ind]
 
         doc = {

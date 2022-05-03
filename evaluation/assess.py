@@ -7,7 +7,7 @@ if __name__ == "__main__":
     labels["FileName"] = list(map(lambda x: x+".jpg" if ".jpg" not in x else x, labels["FileName"].values))
     labels.drop_duplicates(["FileName"], inplace=True)
 
-    with open("../output/test.pickle", "rb") as file:
+    with open("../output/test_color.pickle", "rb") as file:
         predictions = pickle.load(file)
 
     accuracy_mask = []

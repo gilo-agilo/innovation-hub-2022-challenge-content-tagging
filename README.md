@@ -12,17 +12,3 @@ and [pca.joblib](https://github.com/lamproslntz/cbir-deep-learning/blob/master/s
 1. Start Elastic Search (tip: wait a minute after the ES started)
 2. Run **app.py**
 3. Open "http://localhost:9200" and use the tool
-
-## Benchmark accuracy 
-#### (on local Elastic Search)
-Overall accuracy per each requirement
-![plot](assets/accuracy/accuracy1.PNG)
-
-Accuracy per requirement and value
-![plot](assets/accuracy/model.PNG)
-![plot](assets/accuracy/type.PNG)
-![plot](assets/accuracy/Color.PNG)
-![plot](assets/accuracy/Background.PNG)
-![plot](assets/accuracy/Inside.PNG)
-![plot](assets/accuracy/Audience1.PNG)
-![plot](assets/accuracy/Audience2.PNG)
