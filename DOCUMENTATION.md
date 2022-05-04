@@ -51,7 +51,7 @@ The first task was chosen **CBIR** (Content Based Image Retrieval) - searching b
 First approach to test for creating images' features was chosen - **Image classification architecture**, 
 as there are a lot SOTA architectures with pre-trained models.
 
-Benchmark approach:
+## Benchmark approach:
 1. Features extraction - **VGG16** model pre-trained on [**CIFAR-10** dataset](https://www.cs.toronto.edu/~kriz/cifar.html)
 ![plot](assets/vgg16-2.png)
 ![plot](assets/cifar10.png)
@@ -105,3 +105,14 @@ Original model             |  Color detection model
 ![plot](assets/accuracy/Inside.PNG)
 ![plot](assets/accuracy/Audience1.PNG)
 ![plot](assets/accuracy/Audience2.PNG)
+
+
+## Multiple models approach
+One way to improve the accuracy is to retrain the model to detect not the classes from CIFAR-10 but the classes we need. 
+There are also multiple ways of doing that. As our classes are pretty different from each other by the meaning, it would
+be better to train not single NN model, but multiple models for ach group of classes (separately for car models, colors, 
+etc). The only difficulty could appear when combining the results from multiple models. <br>
+
+To prove this concept we have started with Efficient Net B3 model which was trained to classify color of the cars 
+([link to approach](https://www.kaggle.com/landrykezebou/vcor-vehicle-color-recognition-dataset)). <br>
+The accuracy of using the trained model for our needs can be found about (accuracy of Color detection model).
