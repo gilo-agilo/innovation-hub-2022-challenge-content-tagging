@@ -27,6 +27,24 @@ number_of_shards = 30
 number_of_replicas = 0
 
 
+def tf_features_vector(model, image):
+    if model is None:
+        app.logger.error(f"Provided deep-learning model is None ...")
+        return None
+
+    # prepare image to appropriate shape
+    img = np.array(image)
+    img = cv2.resize(img, (224, 224))
+    if img.shape != (224, 224, 3):
+        app.logger.error("query image shape is not (224, 224, 3), but", img.shape)
+    img = np.expand_dims(img, axis=0)
+
+    # get features
+    extracted_features = model(img).numpy().flatten().tolist()
+
+    return extracted_features
+
+
 def tf_create_queries(directory, model):
     """ Read test data and create Elasticsearch queries.
 
@@ -75,7 +93,7 @@ def tf_create_queries(directory, model):
             images.append(img)
         images = np.array(images)
 
-        extracted_features = feature_extraction_model(images).numpy()
+        extracted_features = model(images).numpy()
 
         for ind, filename in enumerate(current_filenames):
             filepath = directory + "/" + filename

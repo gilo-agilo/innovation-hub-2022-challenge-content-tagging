@@ -96,11 +96,7 @@ Overall accuracy per each requirement
 Accuracy per requirement and value
 ![plot](assets/accuracy/model.PNG)
 ![plot](assets/accuracy/type.PNG)
-
-Original model             |  Color detection model
-:-------------------------:|:-------------------------:
-![](assets/accuracy/Color.PNG)  |  ![](assets/accuracy/Color_model.PNG)
-
+![plot](assets/accuracy/Color.PNG)
 ![plot](assets/accuracy/Background.PNG)
 ![plot](assets/accuracy/Inside.PNG)
 ![plot](assets/accuracy/Audience1.PNG)
@@ -113,6 +109,32 @@ There are also multiple ways of doing that. As our classes are pretty different 
 be better to train not single NN model, but multiple models for ach group of classes (separately for car models, colors, 
 etc). The only difficulty could appear when combining the results from multiple models. <br>
 
-To prove this concept we have started with Efficient Net B3 model which was trained to classify color of the cars 
+## Color model
+To prove this concept we have started with **Efficient Net B3 model** which was trained on **Cars Dataset** 
+(look **Dataset** chapter) to classify color of the cars.
 ([link to approach](https://www.kaggle.com/landrykezebou/vcor-vehicle-color-recognition-dataset)). <br>
-The accuracy of using the trained model for our needs can be found about (accuracy of Color detection model).
+
+![](assets/EffecientNet-B3-architecture.png)
+![](assets/Cars_dataset.PNG)
+
+### Accuracy
+Benchmark model             |  Color detection model
+:-------------------------:|:-------------------------:
+![](assets/accuracy/Color.PNG)  |  ![](assets/accuracy/Color_model.PNG)
+
+
+### Examples
+Input image <br>
+![](assets/accuracy/Color_input_image.PNG)
+
+Benchmark model             |  Color detection model
+:-------------------------:|:-------------------------:
+![](assets/accuracy/Benchmark_output_1.PNG)  |  ![](assets/accuracy/Color_model_1.PNG)
+![](assets/accuracy/Benchmark_output_2.PNG)  |  ![](assets/accuracy/Color_model_2.PNG)
+
+As we can see, the color model detects exactly the color we need. 
+Moreover, it is interesting that it would also detect similar types of cars 
+(hatchback for input hatchback, Mustang for input Mustang, etc).
+
+So, we've proved that the model trained exactly for our needs would give needed results.<br>
+The next step would be to train the model to detect car's model and evaluate the results.
