@@ -1,6 +1,6 @@
 import logging
 from tqdm import tqdm
-
+IMAGE_BUCKET = "https://data-science-cars-images.s3.eu-west-2.amazonaws.com/"
 logging.basicConfig(level=logging.WARNING, format='%(asctime)s %(levelname)s [%(name)s] : %(message)s')
 
 
@@ -65,7 +65,7 @@ class Searcher:
                 res = {
                     'id': hit["_source"]["id"],
                     'filename': hit["_source"]["filename"],
-                    'path': hit["_source"]["path"],
+                    'path':  IMAGE_BUCKET + hit["_source"]["filename"],
                     'score': hit["_score"]
                 }
                 record["images"].append(res)

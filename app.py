@@ -24,6 +24,7 @@ from index.searcher import Searcher
 
 ES_PASSWORD = "+b77YVyI_QDtEAMO=bRl"
 ES_DB_PATH = "es_db/train.json"
+IMAGE_BUCKET = "https://data-science-cars-images.s3.eu-west-2.amazonaws.com/"
 
 ProductionMode = os.getenv('elastciDn') != None
 # ProductionMode = False
@@ -157,7 +158,7 @@ def searchOpenSearch():
         res = {
                 'id': hit["_source"]["id"],
                 'filename': hit["_source"]["filename"],
-                'path': hit["_source"]["path"],
+                'path': IMAGE_BUCKET + hit["_source"]["filename"],
                 'score': hit["_score"]
             }
         openSearchrecord["images"].append(res)
