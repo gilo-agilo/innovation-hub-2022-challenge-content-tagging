@@ -130,7 +130,7 @@ def search():
     
     return renderTemplate(image, results, 'index.html')
 
-@app.route('/sarchOpenSearch', methods=['POST'])
+@app.route('/searchOpenSearch', methods=['POST'])
 def searchOpenSearch():
     image = Image.open(request.files['image-file'].stream)
     features_vec = imageVectorInternal(image);
