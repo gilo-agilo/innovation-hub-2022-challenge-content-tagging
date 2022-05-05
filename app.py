@@ -166,7 +166,7 @@ def searchOpenSearch():
     
     return renderTemplate(image, results, 'index-opensearch.html')
 
-@app.route('/sarchOpenSearch')
+@app.route('/searchOpenSearch')
 def load_page_OpenSearch():
     """ Render index.html webpage. """
     return render_template('index-opensearch.html')
