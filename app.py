@@ -9,6 +9,7 @@ from elasticsearch import Elasticsearch
 from flask import Flask, render_template, request, jsonify
 from opensearchpy import OpenSearch
 from tqdm import tqdm
+import urllib.request
 
 import joblib
 import torch
@@ -23,7 +24,7 @@ from index.indexer import Indexer
 from index.searcher import Searcher
 
 ES_PASSWORD = "+b77YVyI_QDtEAMO=bRl"
-ES_DB_PATH = "es_db/train.json"
+DB_INIT_FILE = "https://data-science-cars-images.s3.eu-west-2.amazonaws.com/data/train.json"
 IMAGE_BUCKET = "https://data-science-cars-images.s3.eu-west-2.amazonaws.com/"
 
 ProductionMode = os.getenv('elastciDn') != None
@@ -243,9 +244,10 @@ if __name__ == '__main__':
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
 
-    # read Elastic Search DB
-    with open(ES_DB_PATH, "r") as file:
-        images = json.load(file)
+    
+    with urllib.request.urlopen(DB_INIT_FILE) as url:
+        images = json.loads(url.read())
+    
     num_features = len(images[0]["features"])
 
     app.logger.info(f"Running Elasticsearch on {hosts} ...")
