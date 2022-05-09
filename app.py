@@ -3,6 +3,7 @@ import logging
 import json
 import base64
 from io import BytesIO
+from pydoc import importfile
 from PIL import Image
 import numpy as np
 from elasticsearch import Elasticsearch
@@ -11,94 +12,47 @@ from opensearchpy import OpenSearch
 from tqdm import tqdm
 import urllib.request
 
-import joblib
-import torch
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
-
 from constants import *
 from models.image_dataset import ImageDataset
-from models.utils import predict
 from models import pretrained_models
 from index.indexer import Indexer
 from index.searcher import Searcher
+from configuration import Configuration
+from services.aiImageService import AIImageService
 
-ES_PASSWORD = "+b77YVyI_QDtEAMO=bRl"
-DB_INIT_FILE = "https://data-science-cars-images.s3.eu-west-2.amazonaws.com/data/train.json"
-IMAGE_BUCKET = "https://data-science-cars-images.s3.eu-west-2.amazonaws.com/"
+conf = Configuration()
+
+ES_PASSWORD = conf.ES_PASSWORD
+DB_INIT_FILE = conf.DB_INIT_FILE
+IMAGE_BUCKET = conf.IMAGE_BUCKET
 
 ProductionMode = os.getenv('elastciDn') != None
-# ProductionMode = False
 
-# FIXME
-# dir_train = "static/cifar10/train"
-# dir_test = "static/cifar10/test"
-dir_test = "static/ford/test"
-
-hosts = "http://localhost:9200"
-index_name = 'cifar10'
-number_of_shards = 30
-number_of_replicas = 0
+dir_test = conf.DIR_DESTINATION
+hosts = conf.ES_HOST
+index_name = conf.INDEX_NAME
+number_of_shards = conf.ES_NUMBER_OF_SHARDS
+number_of_replicas = conf.ES_NUMBER_OF_REPLICAS
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
 
-# hook variable for VGG-16 image embeddings
-hook_features = []
-
-
-# FIXME: change hooks into simple output
-def get_features():
-    """ Hook for extracting image embeddings from the layer that is attached to.
-
-    Returns:
-        hook, as callable.
-    """
-    def hook(model, input, output):
-        global hook_features
-        hook_features = output.detach().cpu().numpy()
-    return hook
-
+service = None
 
 @app.route('/')
 def load_page():
     """ Render index.html webpage. """
     return render_template('index.html')
 
-
-
 @app.route('/ImageVector', methods=['POST'])
 def imageVector():
     image = Image.open(request.files['image-file'].stream)
 
-    features_vec = imageVectorInternal(image)
+    features_vec =  service.imageVectorInternal(image)
 
     return json.dumps({
         "vector" : features_vec.tolist()
     })
-
-def imageVectorInternal(image):
-    # create dataset and dataloader objects for Pytorch
-    dataset = ImageDataset([image], transform)
-    dataloader = DataLoader(dataset, batch_size=64, shuffle=False)
-
-    # pass image trough deep-learning model to gain the image embedding vector
-    # and predict the class
-    pred = predict(dataloader, model, device)
-
-    # extract the image embeddings vector
-    embedding = hook_features
-    # reduce the dimensionality of the embedding vector
-    embedding = pca.transform(embedding)
-
-    # get image clas s label as one-hot vector
-    label_vec = np.zeros(len(LABEL_MAPPING), dtype='int64')
-    label_vec[pred] = 1
-
-    # concatenate embeddings and label vector
-    features_vec = np.concatenate((embedding, label_vec), axis=None)
-    
-    return features_vec
 
 def renderTemplate(image, results, pageName):
     # prepare image for html
@@ -116,7 +70,7 @@ def renderTemplate(image, results, pageName):
 @app.route('/', methods=['POST'])
 def search():
     image = Image.open(request.files['image-file'].stream)
-    features_vec = imageVectorInternal(image);
+    features_vec = service.imageVectorInternal(image);
 
     filename = request.files['image-file'].filename
     query = {
@@ -135,7 +89,7 @@ def search():
 @app.route('/searchOpenSearch', methods=['POST'])
 def searchOpenSearch():
     image = Image.open(request.files['image-file'].stream)
-    features_vec = imageVectorInternal(image);
+    features_vec =  service.imageVectorInternal(image);
 
     filename = request.files['image-file'].filename
     query_body = {
@@ -215,36 +169,9 @@ def reinitOpenSearch():
     return "ok"
 
 if __name__ == '__main__':
-    # get available device (CPU/GPU)
-    device = torch.device(f"cuda" if torch.cuda.is_available() else "cpu")
-    app.logger.info(f'Using {device} device ...')
+    service = AIImageService(app) 
+    service.init()   
 
-    # initialize VGG-16
-    app.logger.info(f'Loading VGG-16 model from {PATH_VGG_16} ...')
-    model = pretrained_models.initialize_model(pretrained=True,
-                                               num_labels=len(LABEL_MAPPING),
-                                               feature_extracting=True)
-    # load VGG-16 pretrained weights
-    # model.load_state_dict(torch.load(path_vgg_16, map_location='cuda:0'))
-    model.load_state_dict(torch.load(PATH_VGG_16, map_location='cpu'))
-    # send VGG-16 to CPU/GPU
-    model.to(device)
-    # register hook
-    model.classifier[5].register_forward_hook(get_features())
-
-    # load PCA pretrained model
-    app.logger.info(f'Loading PCA model from {PATH_PCA} ...')
-    pca = joblib.load(PATH_PCA)
-
-    # image transformations
-    transform = transforms.Compose([
-        transforms.Resize(224),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-
-    
     with urllib.request.urlopen(DB_INIT_FILE) as url:
         images = json.loads(url.read())
     
@@ -277,8 +204,8 @@ if __name__ == '__main__':
 
     searcher = Searcher()
     
-    host = 'https://search-testdomain-6ymb6zjdmjqxog7kln72dpya7m.eu-west-1.es.amazonaws.com'
-    auth = ('testdomainUser', 'Qwerty1234!') # For testing only. Don't store credentials in code.
+    host = conf.OPENSEARCH_HOST
+    auth = (conf.OPENSEARCH_USER, conf.OPEN_SEARCH_PASSWORD) 
     client = OpenSearch(hosts = host, http_auth = auth)    
 
     if ProductionMode:
