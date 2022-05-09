@@ -18,7 +18,7 @@ app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
 
 conf = Configuration()
-service = AIImageService(app)
+aiImageService = AIImageService(app)
 imageService = ImageService(conf)
 openSearchService = OpenSearchService(conf)
 elasticSerchService = ElasticSearchService(app, conf, ProductionMode)
@@ -35,7 +35,7 @@ def load_page_OpenSearch():
 @app.route('/', methods=['POST'])
 def search():
     image = Image.open(request.files['image-file'].stream)
-    features_vec = service.imageVectorInternal(image);
+    features_vec = aiImageService.imageVectorInternal(image);
     filename = request.files['image-file'].filename
     results = elasticSerchService.Search(filename, features_vec)
 
@@ -44,7 +44,7 @@ def search():
 @app.route('/searchOpenSearch', methods=['POST'])
 def searchOpenSearch():
     image = Image.open(request.files['image-file'].stream)
-    features_vec =  service.imageVectorInternal(image);
+    features_vec =  aiImageService.imageVectorInternal(image);
     filename = request.files['image-file'].filename
     results = openSearchService.Search(filename, features_vec)
     
@@ -54,7 +54,7 @@ def searchOpenSearch():
 def imageVector():
     image = Image.open(request.files['image-file'].stream)
 
-    features_vec =  service.imageVectorInternal(image)
+    features_vec =  aiImageService.imageVectorInternal(image)
 
     return json.dumps({
         "vector" : features_vec.tolist()
@@ -64,10 +64,12 @@ def imageVector():
 def reinitOpenSearch():
     openSearchService.reinitOpenSearch(imageService.images)
     
-    return "ok"
+    return json.dumps({
+        "status" : "ok"
+    })
 
 if __name__ == '__main__':
-    service.init()   
+    aiImageService.init()   
     imageService.InitImages()
     elasticSerchService.init(imageService.images)
     
