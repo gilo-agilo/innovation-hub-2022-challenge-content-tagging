@@ -1,7 +1,6 @@
 from elasticsearch import Elasticsearch
 import os
-import urllib.request
-import json
+
 from index.indexer import Indexer
 from index.searcher import Searcher
 
@@ -22,14 +21,11 @@ class ElasticSearchService:
         if productionMode:
             self.es = Elasticsearch(hosts='http://' + os.environ['elastciDn'] + ':9200')
         else: 
-            self.es = Elasticsearch(hosts='http://localhost:30002')
-            #es = Elasticsearch(hosts=hosts, timeout=60, retry_on_timeout=True,
-            #              http_auth=('elastic', ES_PASSWORD))
+            #self.es = Elasticsearch(hosts='http://localhost:30002')
+            es = Elasticsearch(hosts=configuration.ES_HOST, timeout=60, retry_on_timeout=True,
+                          http_auth=('elastic', configuration.ES_PASSWORD))
             
-    def init(self):
-        with urllib.request.urlopen(self.configuration.DB_INIT_FILE) as url:
-            images = json.loads(url.read())
-        
+    def init(self, images):
         num_features = len(images[0]["features"])
 
         self.app.logger.info(f"Creating Elasticsearch index {self.configuration.INDEX_NAME} ...")
