@@ -19,6 +19,7 @@ from index.indexer import Indexer
 from index.searcher import Searcher
 from configuration import Configuration
 from services.aiImageService import AIImageService
+from services.imageService import ImageService
 
 conf = Configuration()
 
@@ -37,11 +38,11 @@ number_of_replicas = conf.ES_NUMBER_OF_REPLICAS
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
 
-service = None
+service = AIImageService(app)
+imageService = ImageService()
 
 @app.route('/')
 def load_page():
-    """ Render index.html webpage. """
     return render_template('index.html')
 
 @app.route('/ImageVector', methods=['POST'])
@@ -55,14 +56,7 @@ def imageVector():
     })
 
 def renderTemplate(image, results, pageName):
-    # prepare image for html
-    buffered = BytesIO()
-    image.save(buffered, format="JPEG")
-    img_bytes = base64.b64encode(buffered.getvalue())
-    img_str = img_bytes.decode()
-
-    # prepare list with all input image info
-    input_img = "data:image/png;base64, " + img_str
+    input_img = imageService.ImageToBase64(image)
 
     return render_template(pageName, results=results,
                            input_img=input_img, input_img_filename=request.files['image-file'].filename)
@@ -169,7 +163,6 @@ def reinitOpenSearch():
     return "ok"
 
 if __name__ == '__main__':
-    service = AIImageService(app) 
     service.init()   
 
     with urllib.request.urlopen(DB_INIT_FILE) as url:
