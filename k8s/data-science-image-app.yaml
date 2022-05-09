@@ -29,7 +29,7 @@ spec:
         ports:
         - containerPort: 5000
         env: 
-        - name: elastciDn
+        - name: elasticDns
           valueFrom:
             configMapKeyRef: 
               name: application-configmap

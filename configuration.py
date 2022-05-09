@@ -1,3 +1,5 @@
+import os
+
 class Configuration:
     ES_PASSWORD = "+b77YVyI_QDtEAMO=bRl"
     DB_INIT_FILE = "https://data-science-cars-images.s3.eu-west-2.amazonaws.com/data/train.json"
@@ -13,3 +15,7 @@ class Configuration:
     ES_HOST = "http://localhost:9200"
     
     DIR_DESTINATION = "dir_test"
+    
+    def __init__(self, production_mode):
+        if (production_mode):
+            OPENSEARCH_USER = os.getenv('OPENSEARCH_USER')

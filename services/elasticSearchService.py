@@ -19,7 +19,7 @@ class ElasticSearchService:
                        http_auth=('elastic', configuration.ES_PASSWORD))
 
         if productionMode:
-            self.es = Elasticsearch(hosts='http://' + os.environ['elastciDn'] + ':9200')
+            self.es = Elasticsearch(hosts='http://' + os.environ['elasticDns'] + ':9200')
         else: 
             #self.es = Elasticsearch(hosts='http://localhost:30002')
             es = Elasticsearch(hosts=configuration.ES_HOST, timeout=60, retry_on_timeout=True,

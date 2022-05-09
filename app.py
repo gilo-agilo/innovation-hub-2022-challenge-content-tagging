@@ -12,16 +12,15 @@ import os
 
 from services.templateService import TemplateService
 
-ProductionMode = os.getenv('elastciDn') != None
+prodiction_mode = os.getenv('elasticDns') != None
+conf = Configuration(prodiction_mode)
 
 app = Flask(__name__)
 app.logger.setLevel(logging.INFO)
-
-conf = Configuration()
 aiImageService = AIImageService(app)
 imageService = ImageService(conf)
 openSearchService = OpenSearchService(conf)
-elasticSerchService = ElasticSearchService(app, conf, ProductionMode)
+elasticSerchService = ElasticSearchService(app, conf, prodiction_mode)
 templateService = TemplateService(imageService)
 
 @app.route('/')
@@ -73,7 +72,7 @@ if __name__ == '__main__':
     imageService.InitImages()
     elasticSerchService.init(imageService.images)
     
-    if ProductionMode:
+    if prodiction_mode:
         app.logger.info("Running application Production mode...")
         port = int(os.environ.get("PORT", 5000))
         app.run(debug=True, host='0.0.0.0', port=port)
