@@ -18,4 +18,6 @@ class Configuration:
     
     def __init__(self, production_mode):
         if (production_mode):
-            OPENSEARCH_USER = os.getenv('OPENSEARCH_USER')
+            self.OPENSEARCH_USER = os.getenv('OPENSEARCH_USER')
+            self.OPEN_SEARCH_PASSWORD = os.getenv('OPEN_SEARCH_PASSWORD')
+            self.OPENSEARCH_HOST = os.getenv('OPENSEARCH_HOST')
