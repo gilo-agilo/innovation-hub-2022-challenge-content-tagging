@@ -6,6 +6,7 @@ import numpy as np
 from tqdm import tqdm
 from PIL import Image
 from flask import Flask
+from pathlib import Path
 
 import joblib
 import torch
@@ -39,7 +40,7 @@ def get_features():
     return hook
 
 
-def create_docs(directory, model, pca, transform, mapping):
+def create_docs(directory, model, pca, transform, mapping, save_path=None):
     """ Read CIFAR-10 train data and create Elasticsearch indexable documents.
 
     The image documents structure is the following: ("id", "filename", "path", "features").
@@ -73,10 +74,17 @@ def create_docs(directory, model, pca, transform, mapping):
         app.logger.error(f"Provided PCA model is None ...")
         return None, 0
 
+    # get filepathes in all subdirectories
+    filelist = []
+    for root, dirs, files in os.walk(dir_train):
+        for file in files:
+            # append the file name to the list
+            filelist.append(os.path.join(root, file))
+
     data = []
     num_features = 0
-    for file in tqdm(os.listdir(directory), desc="creating docs for images"):
-        path = os.path.join(directory, file)
+    for path in tqdm(filelist, desc="creating docs for images"):
+        # path = os.path.join(directory, file)
 
         with Image.open(path) as image:
             # create dataset and dataloader objects for Pytorch
@@ -85,7 +93,7 @@ def create_docs(directory, model, pca, transform, mapping):
 
             # pass image trough deep-learning model to gain the image embedding vector
             try:
-                predict(dataloader, model, device)
+                label = predict(dataloader, model, device)
             except Exception as error:
                 print(error)
                 pass
@@ -95,7 +103,8 @@ def create_docs(directory, model, pca, transform, mapping):
             embedding = pca.transform(embedding)
 
             # get image class label as one-hot vector
-            label_str = file[file.find('-') + 1: file.find('.')]
+            # label_str = file[file.find('-') + 1: file.find('.')]
+            label_str = Path(path).parts[-3]
             # FIXME: change labels from imagename to labels from file
             label_vec = label_to_vector(label_str, mapping)
 
@@ -109,16 +118,29 @@ def create_docs(directory, model, pca, transform, mapping):
                 'path': path,
                 'features': features_vec.tolist()
             }
-            data.append(doc)
+
+            if save_path is not None:
+                if os.path.exists(save_path):
+                    with open(save_path, "r") as f:
+                        images = json.load(f)
+                        images.append(doc)
+                    with open(save_path, "w") as f:
+                        json.dump(images, f)
+                else:
+                    with open(save_path, "w") as f:
+                        json.dump([doc], f)
+                    print("created", save_path)
+            else:
+                data.append(doc)
 
     return data, num_features
 
 
 if __name__ == "__main__":
-    dir_train = r'../static/ford/train'
+    dir_train = r'C:\Users\ann\Code\challenges\datasets\crawler'
     # dir_test = '../static/ford/test'
 
-    save_path = "../es_db/train.json"
+    save_path = "../es_db/crawler.json"
 
     # get available device (CPU/GPU)
     device = torch.device(f"cuda" if torch.cuda.is_available() else "cpu")
@@ -150,15 +172,19 @@ if __name__ == "__main__":
     ])
 
     app.logger.info("Loading Ford train data and creating Elasticsearch documents ...")
-    images, num_features = create_docs(dir_train, model, pca, transform, LABEL_MAPPING)
+    images, num_features = create_docs(dir_train, model, pca, transform, LABEL_MAPPING,
+                                       # save_path=save_path
+                                       )
     if (images is None) or (num_features == 0):
         app.logger.error("Number of Elasticsearch documents is 0 ...")
         sys.exit(1)
 
+    # TODO: check me on small dataset
     # save into json to file to be readable
-    with open(save_path, "w") as outfile:
-        json.dump(images, outfile)
-    print(f"saved into {save_path}")
+    if len(images) > 0 or True:
+        with open(save_path, "w") as outfile:
+            json.dump(images, outfile)
+        print(f"saved into {save_path}")
 
     # logger.info("Loading CIFAR-10 test data and creating Elasticsearch queries ...")
     # queries = create_queries(dir_test, model, pca, transform, len(label_mapping))

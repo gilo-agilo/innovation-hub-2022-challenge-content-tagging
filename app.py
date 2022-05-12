@@ -15,22 +15,24 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 
+import keras
+from keras.models import load_model
+
 from constants import *
 from models.image_dataset import ImageDataset
 from models.utils import predict
 from models import pretrained_models
 from index.indexer import Indexer
 from index.searcher import Searcher
-
-ES_PASSWORD = "+b77YVyI_QDtEAMO=bRl"
-ES_DB_PATH = "es_db/train.json"
+from evaluation.evaluate_tf import tf_features_vector
 
 ProductionMode = os.getenv('elastciDn') != None
-# ProductionMode = False
+BENCHMARK_MODEL = False
 
-# FIXME
-# dir_train = "static/cifar10/train"
-# dir_test = "static/cifar10/test"
+ES_PASSWORD = "+b77YVyI_QDtEAMO=bRl"
+ES_DB_PATH = "es_db/train.json" if BENCHMARK_MODEL else "es_db/train_color.json"
+
+# FIXME: when images would be not in Docker image
 dir_test = "static/ford/test"
 
 hosts = "http://localhost:9200"
@@ -64,7 +66,6 @@ def load_page():
     return render_template('index.html')
 
 
-
 @app.route('/ImageVector', methods=['POST'])
 def imageVector():
     image = Image.open(request.files['image-file'].stream)
@@ -72,8 +73,9 @@ def imageVector():
     features_vec = imageVectorInternal(image)
 
     return json.dumps({
-        "vector" : features_vec.tolist()
+        "vector": features_vec.tolist()
     })
+
 
 def imageVectorInternal(image):
     # create dataset and dataloader objects for Pytorch
@@ -98,6 +100,7 @@ def imageVectorInternal(image):
     
     return features_vec
 
+
 def renderTemplate(image, results, pageName):
     # prepare image for html
     buffered = BytesIO()
@@ -111,10 +114,14 @@ def renderTemplate(image, results, pageName):
     return render_template(pageName, results=results,
                            input_img=input_img, input_img_filename=request.files['image-file'].filename)
 
+
 @app.route('/', methods=['POST'])
 def search():
     image = Image.open(request.files['image-file'].stream)
-    features_vec = imageVectorInternal(image);
+    if BENCHMARK_MODEL:
+        features_vec = imageVectorInternal(image)
+    else:
+        features_vec = tf_features_vector(color_features_model, image)
 
     filename = request.files['image-file'].filename
     query = {
@@ -127,20 +134,20 @@ def search():
     results = searcher.search_index(es=es, name=index_name, queries=[query], k=10)
     results = results[0]['images']
 
-    
     return renderTemplate(image, results, 'index.html')
+
 
 @app.route('/sarchOpenSearch', methods=['POST'])
 def searchOpenSearch():
     image = Image.open(request.files['image-file'].stream)
-    features_vec = imageVectorInternal(image);
+    features_vec = imageVectorInternal(image)
 
     filename = request.files['image-file'].filename
     query_body = {
         "query": {
-            "knn" : {
-                "features" :{
-                    "vector" : features_vec,
+            "knn": {
+                "features": {
+                    "vector": features_vec,
                     "k": 10
                 }
             } 
@@ -166,10 +173,12 @@ def searchOpenSearch():
     
     return renderTemplate(image, results, 'index-opensearch.html')
 
+
 @app.route('/sarchOpenSearch')
 def load_page_OpenSearch():
     """ Render index.html webpage. """
     return render_template('index-opensearch.html')
+
 
 @app.route('/reinitOpenSearch')
 def reinitOpenSearch():
@@ -212,6 +221,7 @@ def reinitOpenSearch():
         client.index(index=index_name, body=image)
     return "ok"
 
+
 if __name__ == '__main__':
     # get available device (CPU/GPU)
     device = torch.device(f"cuda" if torch.cuda.is_available() else "cpu")
@@ -230,6 +240,12 @@ if __name__ == '__main__':
     # register hook
     model.classifier[5].register_forward_hook(get_features())
 
+    # load Color model
+    color_model_path = "saved-model/EfficientNetB3-car color-81.61.h5"
+    color_model = load_model(color_model_path)
+    # get needed layer of model and predict features
+    color_features_model = keras.Model(inputs=color_model.input, outputs=color_model.layers[-4].output)
+
     # load PCA pretrained model
     app.logger.info(f'Loading PCA model from {PATH_PCA} ...')
     pca = joblib.load(PATH_PCA)
@@ -243,7 +259,8 @@ if __name__ == '__main__':
     ])
 
     # read Elastic Search DB
-    with open(ES_DB_PATH, "r") as file:
+    # with open(ES_DB_PATH, "r") as file:
+    with open("es_db/crawler.json", "r") as file:
         images = json.load(file)
     num_features = len(images[0]["features"])
 
@@ -275,8 +292,8 @@ if __name__ == '__main__':
     searcher = Searcher()
     
     host = 'https://search-testdomain-6ymb6zjdmjqxog7kln72dpya7m.eu-west-1.es.amazonaws.com'
-    auth = ('testdomainUser', 'Qwerty1234!') # For testing only. Don't store credentials in code.
-    client = OpenSearch(hosts = host, http_auth = auth)    
+    auth = ('testdomainUser', 'Qwerty1234!')  # For testing only. Don't store credentials in code.
+    client = OpenSearch(hosts=host, http_auth=auth)
 
     if ProductionMode:
         app.logger.info("Running application Production mode...")
