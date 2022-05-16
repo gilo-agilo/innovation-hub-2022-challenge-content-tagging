@@ -4,10 +4,10 @@ import pickle
 
 if __name__ == "__main__":
     labels = pd.read_csv("../data/ford_files.csv")
-    labels["FileName"] = list(map(lambda x: x+".jpg" if ".jpg" not in x else x, labels["FileName"].values))
+    labels["FileName"] = list(map(lambda x: x+".jpg" if ".jpg" not in x.lower() else x, labels["FileName"].values))
     labels.drop_duplicates(["FileName"], inplace=True)
 
-    with open("../output/test_color.pickle", "rb") as file:
+    with open("../output/test_car_model.pickle", "rb") as file:
         predictions = pickle.load(file)
 
     accuracy_mask = []
@@ -16,13 +16,15 @@ if __name__ == "__main__":
         found_images = query["images"]
         found_filenames = list(map(lambda x: x["filename"], found_images))
         found_scores = list(map(lambda x: x["score"], found_images))
+        found_dict = dict(zip(found_filenames, found_scores))
 
         query_labels = labels[labels["FileName"] == query_filepath].reset_index(drop=True)
-        found_labels = labels[labels["FileName"].isin(found_filenames)].reset_index(drop=True)
-        found_labels["Score"] = found_scores
+        if query_labels.shape[0] > 0:
+            found_labels = labels[labels["FileName"].isin(found_filenames)].reset_index(drop=True)
+            found_labels["Score"] = [found_dict[x] for x in found_labels["FileName"].values]
 
-        mask = found_labels.values[:, 1:-1] == query_labels.values[:, 1:]
-        accuracy_mask = np.vstack((accuracy_mask, mask)) if len(accuracy_mask) > 0 else mask
+            mask = found_labels.values[:, 1:-1] == query_labels.values[:, 1:]
+            accuracy_mask = np.vstack((accuracy_mask, mask)) if len(accuracy_mask) > 0 else mask
 
     accuracy_mask = accuracy_mask.astype(int)
     true_sum = np.sum(accuracy_mask, axis=0)
@@ -50,24 +52,24 @@ if __name__ == "__main__":
         found_images = query["images"]
         found_filenames = list(map(lambda x: x["filename"], found_images))
         found_scores = list(map(lambda x: x["score"], found_images))
+        found_dict = dict(zip(found_filenames, found_scores))
 
         query_labels = labels[labels["FileName"] == query_filepath].reset_index(drop=True)
-        found_labels = labels[labels["FileName"].isin(found_filenames)].reset_index(drop=True)
-        found_labels["Score"] = found_scores
+        if query_labels.shape[0] > 0:
+            found_labels = labels[labels["FileName"].isin(found_filenames)].reset_index(drop=True)
+            found_labels["Score"] = [found_dict[x] for x in found_labels["FileName"].values]
 
-        mask = found_labels.values[:, 1:-1] == query_labels.values[:, 1:]
-        for ind, column in enumerate(query_labels.columns.values[1:]):
-            current_values = labels_values_df[(labels_values_df["column"] == column) &
-                                              (labels_values_df["value"] == query_labels[column][0])]["labels"].values[0]
-            if current_values is not None:
-                current_values = np.hstack((current_values, mask[:, ind]))
-            else:
-                current_values = mask[:, ind]
-            index2insert = labels_values_df[(labels_values_df["column"] == column) &
-                                            (labels_values_df["value"] == query_labels[column][0])].index.values[0]
-            labels_values_df.at[index2insert, "labels"] = np.array(current_values).astype(object)
-
-        pass
+            mask = found_labels.values[:, 1:-1] == query_labels.values[:, 1:]
+            for ind, column in enumerate(query_labels.columns.values[1:]):
+                current_values = labels_values_df[(labels_values_df["column"] == column) &
+                                                  (labels_values_df["value"] == query_labels[column][0])]["labels"].values[0]
+                if current_values is not None:
+                    current_values = np.hstack((current_values, mask[:, ind]))
+                else:
+                    current_values = mask[:, ind]
+                index2insert = labels_values_df[(labels_values_df["column"] == column) &
+                                                (labels_values_df["value"] == query_labels[column][0])].index.values[0]
+                labels_values_df.at[index2insert, "labels"] = np.array(current_values).astype(object)
 
     for ind, row in labels_values_df.iterrows():
         if row["labels"] is not None:
