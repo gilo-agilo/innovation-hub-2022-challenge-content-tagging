@@ -138,3 +138,43 @@ Moreover, it is interesting that it would also detect similar types of cars
 
 So, we've proved that the model trained exactly for our needs would give needed results.<br>
 The next step would be to train the model to detect car's model and evaluate the results.
+
+
+## Model for Car's model recognition
+In our research we've decided to use multiple NN models - separate model for each group of classes.<br>
+The reason is that our classes are diverse by their meaning - car's model is more about shape, color of car is a feature
+of the main object on image, background is everything except of the main object.<br>
+Therefore, we've collected the images with the cars of different models and trained the NN model to recognize them.
+
+
+### Dataset
+For the dataset we took crawled images from Auto Scout24 web-site.<br>
+We've collected images for 8 Ford models:
+* c-max
+* explorer
+* f-150
+* fiesta
+* focus
+* kuga
+* mondeo
+* mustang
+
+There met different types of images - captures ourside of the car, inside, just a part of car and so on.
+Therefore, we needed to clean data and leave only the pictures we need. It was done semi-automatic (firstly, by NN and them manually checking).
+
+### NN model
+For the NN model we took VGG16 architecture (which is used in the benchmark approach).<br> 
+
+There were multiple issues of model training. The main one is that each epoch ran too slow. To solve the problem we've 
+used Tensorflow Profiler to understand what step in training is bottleneck. And it appeared to be the image preparation step.
+The problem was solved by making the transformation of the images once before training than during each epoch.<br>
+
+All in all, our training is done in AWS Sagemaker and images are in AWS S3.<br>
+
+The training is still WIP (just 20 epochs were trained), but there already some improvements in the results.
+
+### Accuracy
+Benchmark model             |  Color detection model        | Model recognition
+:-------------------------:|:-------------------------:|:----------------
+![](assets/accuracy/model.PNG)  |  ![](assets/accuracy/Color_model_model.PNG) | ![](assets/accuracy/Model_model.png)
+![](assets/accuracy/Color.PNG)  |  ![](assets/accuracy/Color_model.PNG) | ![](assets/accuracy/Model_color.png)  
