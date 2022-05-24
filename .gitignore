@@ -3,6 +3,7 @@
 data/
 static/cifar10/
 notebooks/cifar10
+notebooks/
 search-engine-results/
 saved-model/
 report/
