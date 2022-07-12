@@ -176,5 +176,5 @@ The training is still WIP (just 20 epochs were trained), but there already some 
 ### Accuracy
 Benchmark model             |  Color detection model        | Model recognition
 :-------------------------:|:-------------------------:|:----------------
-![](assets/accuracy/model.PNG)  |  ![](assets/accuracy/Color_model_model.PNG) | ![](assets/accuracy/Model_model.png)
-![](assets/accuracy/Color.PNG)  |  ![](assets/accuracy/Color_model.PNG) | ![](assets/accuracy/Model_color.png)  
+![](assets/accuracy/model.PNG)  |  ![](assets/accuracy/Color_model_model.PNG) | ![](assets/accuracy/Model_model.PNG)
+![](assets/accuracy/Color.PNG)  |  ![](assets/accuracy/Color_model.PNG) | ![](assets/accuracy/Model_color.PNG)  

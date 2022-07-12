@@ -150,13 +150,13 @@ if __name__ == "__main__":
 
     # initialize VGG-16
     app.logger.info(f'Loading VGG-16 model from {PATH_VGG_16} ...')
-    model = pretrained_models.initialize_model(pretrained=True,
-                                               num_labels=len(LABEL_MAPPING),
+    model = pretrained_models.initialize_model(pretrained=False,
+                                               num_labels=8,
                                                feature_extracting=True)
     # load VGG-16 pretrained weights
     # model.load_state_dict(torch.load(path_vgg_16, map_location='cuda:0'))
     # model.load_state_dict(torch.load(PATH_VGG_16, map_location='cpu'))
-    model.load_state_dict(torch.load("../saved-model/vgg16-car-models.pth", map_location='cpu'))
+    model.load_state_dict(torch.load("../saved-model/vgg16-car-models60.pth", map_location=device))
     # send VGG-16 to CPU/GPU
     model.to(device)
     # register hook
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     ])
 
     # get features of the test images
-    queries = create_queries(directory=r"C:\Users\ann\Code\challenges\datasets\ford\test",
+    queries = create_queries(directory=r"C:\Users\ann\Code\challenges\datasets\ford\train",
                              model=model, pca=pca, transform=transform, num_labels=10)
 
     # run Elasticsearch
@@ -191,11 +191,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # write results
-    path_results = "../output/test_car_model.txt"
+    path_results = "../output/train_car_model.txt"
     app.logger.info(f"Writing search results at {path_results} ...")
     write_results(results, path_results)
 
     # write to pickle to keep the structure
-    with open("../output/test_car_model.pickle", "wb") as file:
+    with open("../output/train_car_model60.pickle", "wb") as file:
         pickle.dump(results, file)
-    print("saved to ../output/test_car_model.pickle")
+    print("saved to ../output/train_car_model60.pickle")
